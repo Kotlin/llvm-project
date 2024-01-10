@@ -344,8 +344,12 @@ static void uninstallExceptionOrSignalHandlers() {
 
 #include <signal.h>
 
+/// KOTLIN/NATIVE SPECIFIC HACK
+///
+/// We need to disable handling of signals that can originate from the JVM GC,
+/// since they should not trigger the LLVM signal handler.
 static const int Signals[] =
-    { SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV, SIGTRAP };
+    { SIGABRT, /* SIGBUS, SIGFPE, SIGILL, SIGSEGV, */ SIGTRAP };
 static const unsigned NumSignals = std::size(Signals);
 static struct sigaction PrevActions[NumSignals];
 
