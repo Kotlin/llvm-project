@@ -297,6 +297,17 @@ static void RegisterHandlers() { // Not signal-safe.
 
   enum class SignalKind { IsKill, IsInfo };
   auto registerHandler = [&](int Signal, SignalKind Kind) {
+    /// KOTLIN/NATIVE SPECIFIC HACK
+    ///
+    /// We need to disable handling of signals that can originate from the JVM GC,
+    /// since they should not trigger the LLVM signal handler.
+
+    static const int JvmSigs[] = {
+      SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGUSR1, SIGUSR2
+    };
+
+    for (auto S : JvmSigs) if (Signal == S) return;
+
     unsigned Index = NumRegisteredSignals.load();
     assert(Index < array_lengthof(RegisteredSignalInfo) &&
            "Out of space for signal handlers!");
