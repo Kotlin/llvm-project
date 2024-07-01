@@ -156,7 +156,6 @@ void MLInlineAdvisor::onPassEntry(LazyCallGraph::SCC *CurSCC) {
   // they'd be adjacent to Nodes in the last SCC. So we just need to check the
   // boundary of Nodes in NodesInLastSCC for Nodes we haven't seen. We don't
   // care about the nature of the Edge (call or ref).
-  NodeCount -= static_cast<int64_t>(NodesInLastSCC.size());
   while (!NodesInLastSCC.empty()) {
     const auto *N = *NodesInLastSCC.begin();
     NodesInLastSCC.erase(N);
@@ -165,13 +164,14 @@ void MLInlineAdvisor::onPassEntry(LazyCallGraph::SCC *CurSCC) {
       assert(!N->getFunction().isDeclaration());
       continue;
     }
-    ++NodeCount;
     EdgeCount += getLocalCalls(N->getFunction());
     for (const auto &E : *(*N)) {
       const auto *AdjNode = &E.getNode();
       assert(!AdjNode->isDead() && !AdjNode->getFunction().isDeclaration());
       auto I = AllNodes.insert(AdjNode);
-      if (I.second)
+      // We've discovered a new function.
+      if (I.second) {
+        ++NodeCount;
         NodesInLastSCC.insert(AdjNode);
       }
     }
