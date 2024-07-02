@@ -254,11 +254,13 @@ void MLInlineAdvisor::onSuccessfulInlining(const MLInlineAdvice &Advice,
   int64_t NewCallerAndCalleeEdges =
       getCachedFPI(*Caller).DirectCallsToDefinedFunctions;
 
-  if (CalleeWasDeleted)
+  if (CalleeWasDeleted) {
     --NodeCount;
-  else
+    DeadFunctions.insert(Callee);
+  } else {
     NewCallerAndCalleeEdges +=
         getCachedFPI(*Callee).DirectCallsToDefinedFunctions;
+  }
   EdgeCount += (NewCallerAndCalleeEdges - Advice.CallerAndCalleeEdges);
   assert(CurrentIRSize >= 0 && EdgeCount >= 0 && NodeCount >= 0);
 }
