@@ -202,6 +202,7 @@ PipelineTuningOptions::PipelineTuningOptions() {
   CallGraphProfile = true;
   MergeFunctions = EnableMergeFunctions;
   InlinerThreshold = -1;
+  MaxDevirtIterations = -1;
   EagerlyInvalidateAnalyses = EnableEagerlyInvalidateAnalyses;
 }
 
@@ -749,7 +750,7 @@ PassBuilder::buildInlinerPipeline(OptimizationLevel Level,
 
   ModuleInlinerWrapperPass MIWP(IP, PerformMandatoryInliningsFirst,
                                 InlineContext{Phase, InlinePass::CGSCCInliner},
-                                UseInlineAdvisor, MaxDevirtIterations);
+                                UseInlineAdvisor, PTO.MaxDevirtIterations == -1 ? MaxDevirtIterations : PTO.MaxDevirtIterations);
 
   // Require the GlobalsAA analysis for the module so we can query it within
   // the CGSCC pipeline.
