@@ -748,9 +748,10 @@ PassBuilder::buildInlinerPipeline(OptimizationLevel Level,
   if (PGOOpt)
     IP.EnableDeferral = EnablePGOInlineDeferral;
 
+  int MDI = PTO.MaxDevirtIterations == -1 ? MaxDevirtIterations : PTO.MaxDevirtIterations;
   ModuleInlinerWrapperPass MIWP(IP, PerformMandatoryInliningsFirst,
                                 InlineContext{Phase, InlinePass::CGSCCInliner},
-                                UseInlineAdvisor, PTO.MaxDevirtIterations == -1 ? MaxDevirtIterations : PTO.MaxDevirtIterations);
+                                UseInlineAdvisor, MDI);
 
   // Require the GlobalsAA analysis for the module so we can query it within
   // the CGSCC pipeline.
