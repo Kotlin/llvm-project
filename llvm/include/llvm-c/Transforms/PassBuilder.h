@@ -102,6 +102,9 @@ void LLVMPassBuilderOptionsSetMergeFunctions(LLVMPassBuilderOptionsRef Options,
 void LLVMPassBuilderOptionsSetInlinerThreshold(
     LLVMPassBuilderOptionsRef Options, int Threshold);
 
+void LLVMPassBuilderOptionsSetMaxDevirtIterations(
+    LLVMPassBuilderOptionsRef Options, int Iterations);
+
 /**
  * Dispose of a heap-allocated PassBuilderOptions instance
  */

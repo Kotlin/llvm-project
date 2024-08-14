@@ -145,6 +145,11 @@ void LLVMPassBuilderOptionsSetInlinerThreshold(
   unwrap(Options)->PTO.InlinerThreshold = Threshold;
 }
 
+void LLVMPassBuilderOptionsSetMaxDevirtIterations(
+    LLVMPassBuilderOptionsRef Options, int Iterations) {
+  unwrap(Options)->PTO.MaxDevirtIterations = Iterations;
+}
+
 void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options) {
   delete unwrap(Options);
 }
