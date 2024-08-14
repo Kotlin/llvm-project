@@ -96,6 +96,9 @@ public:
   // analyses after various module->function or cgscc->function adaptors in the
   // default pipelines.
   bool EagerlyInvalidateAnalyses;
+
+  /// Tuning option to override default devirtualization iterations.
+  int MaxDevirtIterations;
 };
 
 /// This class provides access to building LLVM's passes.
