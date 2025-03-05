@@ -42,18 +42,8 @@ using namespace clang;
 using namespace serialization;
 
 ModuleFile *ModuleManager::lookupByFileName(StringRef Name) const {
-  auto Entry = FileMgr.getOptionalFileRef(Name, /*OpenFile=*/false,
-                                          /*CacheFailure=*/false);
-#if !defined(__APPLE__)
-  if (Entry) {
-    // On Linux ext4 FileManager's inode caching system does not
-    // provide us correct behaviour for ModuleCache directories.
-    // inode can be reused after PCM delete resulting in cache misleading.
-    if (auto BypassFile = FileMgr.getBypassFile(*Entry))
-      Entry = *BypassFile;
-  }
-#endif
-
+  auto Entry = FileMgr.getFile(Name, /*OpenFile=*/false,
+                               /*CacheFailure=*/false);
   if (Entry)
     return lookup(*Entry);
 
@@ -460,10 +450,7 @@ bool ModuleManager::lookupModuleFile(StringRef FileName, off_t ExpectedSize,
     // On Linux ext4 FileManager's inode caching system does not
     // provide us correct behaviour for ModuleCache directories.
     // inode can be reused after PCM delete resulting in cache misleading.
-    // Only use the bypass file if bypass succeed in case the underlying file
-    // system doesn't support bypass (thus there is no need for the workaround).
-    if (auto Bypass = FileMgr.getBypassFile(*File))
-      File = *Bypass;
+    File = FileMgr.getBypassFile(*File);
   }
 #endif
 

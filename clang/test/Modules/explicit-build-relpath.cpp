@@ -1,6 +1,3 @@
-/// Due to module bypass workaround in https://reviews.llvm.org/D97850 for ext4 FS, relative and absolute path do not match after bypass.
-// REQUIRES: system-darwin
-
 // RUN: rm -rf %t
 // RUN: mkdir %t
 // RUN: cd %t
