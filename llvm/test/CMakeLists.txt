@@ -112,7 +112,6 @@ set(LLVM_TEST_DEPENDS
           llvm-mca
           llvm-ml
           llvm-modextract
-          llvm-mt
           llvm-nm
           llvm-objcopy
           llvm-objdump
@@ -173,6 +172,10 @@ endif()
 if(TARGET LTO)
   set(LLVM_TEST_DEPENDS ${LLVM_TEST_DEPENDS} LTO)
 endif()
+
+if (TARGET llvm-mt)
+  list(APPEND LLVM_TEST_DEPENDS llvm-mt)
+endif ()
 
 if(TARGET llvm-remote-cache-test)
   set(LLVM_TEST_DEPENDS ${LLVM_TEST_DEPENDS} llvm-remote-cache-test)
