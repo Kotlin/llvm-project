@@ -38,7 +38,12 @@ static void incrementGlobal() { ++GlobalInt; }
 static void llvmTrap() { LLVM_BUILTIN_TRAP; }
 static void incrementGlobalWithParam(void *) { ++GlobalInt; }
 
+#define SKIP_WITH_KOTLIN_PATCH() \
+  GTEST_SKIP() << "Crash recovery from SEGFAULT disabled by Kotlin patch"
+
 TEST(CrashRecoveryTest, Basic) {
+  SKIP_WITH_KOTLIN_PATCH();
+
   llvm::CrashRecoveryContext::Enable();
   GlobalInt = 0;
   EXPECT_TRUE(CrashRecoveryContext().RunSafely(incrementGlobal));
@@ -56,6 +61,8 @@ struct IncrementGlobalCleanup : CrashRecoveryContextCleanup {
 static void noop() {}
 
 TEST(CrashRecoveryTest, Cleanup) {
+  SKIP_WITH_KOTLIN_PATCH();
+
   llvm::CrashRecoveryContext::Enable();
   GlobalInt = 0;
   {
@@ -76,6 +83,8 @@ TEST(CrashRecoveryTest, Cleanup) {
 }
 
 TEST(CrashRecoveryTest, DumpStackCleanup) {
+  SKIP_WITH_KOTLIN_PATCH();
+
   SmallString<128> Filename;
   std::error_code EC = sys::fs::createTemporaryFile("crash", "test", Filename);
   EXPECT_FALSE(EC);
