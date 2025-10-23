@@ -3572,9 +3572,10 @@ llvm::Constant *CodeGenModule::EmitAnnotationString(StringRef Str) {
 llvm::Constant *CodeGenModule::EmitAnnotationUnit(SourceLocation Loc) {
   SourceManager &SM = getContext().getSourceManager();
   PresumedLoc PLoc = SM.getPresumedLoc(Loc);
-  if (PLoc.isValid())
-    return EmitAnnotationString(PLoc.getFilename());
-  return EmitAnnotationString(SM.getBufferName(Loc));
+  StringRef Path = PLoc.isValid() ? PLoc.getFilename() : SM.getBufferName(Loc);
+  SmallString<256> RemappedPath(Path);
+  LangOpts.remapPathPrefix(RemappedPath);
+  return EmitAnnotationString(RemappedPath.str());
 }
 
 llvm::Constant *CodeGenModule::EmitAnnotationLineNo(SourceLocation L) {
