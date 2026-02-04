@@ -1245,21 +1245,21 @@ static CXIdxEntityKind getEntityKindFromSymbolKind(SymbolKind K, SymbolLanguage 
   case SymbolKind::Function: return CXIdxEntity_Function;
   case SymbolKind::Variable: return CXIdxEntity_Variable;
   case SymbolKind::Field:
-    if (Lang == SymbolLanguage::ObjC)
+    if (Lang == SymbolLanguage::ObjC || Lang == SymbolLanguage::Swift)
       return CXIdxEntity_ObjCIvar;
     return CXIdxEntity_Field;
   case SymbolKind::EnumConstant: return CXIdxEntity_EnumConstant;
   case SymbolKind::Class:
-    if (Lang == SymbolLanguage::ObjC)
+    if (Lang == SymbolLanguage::ObjC || Lang == SymbolLanguage::Swift)
       return CXIdxEntity_ObjCClass;
     return CXIdxEntity_CXXClass;
   case SymbolKind::Protocol:
-    if (Lang == SymbolLanguage::ObjC)
+    if (Lang == SymbolLanguage::ObjC || Lang == SymbolLanguage::Swift)
       return CXIdxEntity_ObjCProtocol;
     return CXIdxEntity_CXXInterface;
   case SymbolKind::Extension: return CXIdxEntity_ObjCCategory;
   case SymbolKind::InstanceMethod:
-    if (Lang == SymbolLanguage::ObjC)
+    if (Lang == SymbolLanguage::ObjC || Lang == SymbolLanguage::Swift)
       return CXIdxEntity_ObjCInstanceMethod;
     return CXIdxEntity_CXXInstanceMethod;
   case SymbolKind::ClassMethod: return CXIdxEntity_ObjCClassMethod;
