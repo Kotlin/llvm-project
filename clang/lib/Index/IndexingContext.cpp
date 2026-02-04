@@ -39,6 +39,9 @@ void IndexingContext::setASTContext(ASTContext &ctx) {
 }
 
 bool IndexingContext::shouldIndex(const Decl *D) {
+  if (IndexOpts.IndexGeneratedDeclarations) {
+    return true;
+  }
   return !isGeneratedDecl(D);
 }
 
