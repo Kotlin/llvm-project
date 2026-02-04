@@ -27,6 +27,9 @@ static bool isGeneratedDecl(const Decl *D) {
 }
 
 bool IndexingContext::shouldIndex(const Decl *D) {
+  if (IndexOpts.IndexGeneratedDeclarations) {
+    return true;
+  }
   return !isGeneratedDecl(D);
 }
 
