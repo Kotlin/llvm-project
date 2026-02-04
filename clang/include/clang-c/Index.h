@@ -6647,8 +6647,15 @@ typedef enum {
    * indexing session associated with a \c CXIndexAction object.
    * Bodies in system headers are always skipped.
    */
-  CXIndexOpt_SkipParsedBodiesInSession = 0x10
-
+  CXIndexOpt_SkipParsedBodiesInSession = 0x10,
+  /**
+   * See KT-82766. In Kotlin Native cinterop we want to be able to index type
+   * annotated __attribute__((external_source_symbol(generated_declaration, ...
+   * such as those emitted by in the -Swift.h header. \c clang_visitChildren can
+   * already visit those, but \c clang_indexTranslationUnit is more performant, so
+   * we want to enable it to index such declarations.
+   */
+  CXIndexOpt_IndexGeneratedDeclarations = (~(unsigned)0 >> 1) + 1u
 } CXIndexOptFlags;
 
 /**

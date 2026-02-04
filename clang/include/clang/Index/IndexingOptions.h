@@ -37,6 +37,7 @@ struct IndexingOptions {
   // Has no effect if IndexFunctionLocals are false.
   bool IndexParametersInDeclarations = false;
   bool IndexTemplateParameters = false;
+  bool IndexGeneratedDeclarations = false;
 
   // If set, skip indexing inside some declarations for performance.
   // This prevents traversal, so skipping a struct means its declaration an
