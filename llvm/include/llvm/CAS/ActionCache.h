@@ -48,6 +48,7 @@ using AsyncCASIDValue = AsyncValue<CASID>;
 struct AsyncErrorValue {
   Error take() { return std::move(Value); }
 
+  AsyncErrorValue() : Value(Error::success()) {}
   AsyncErrorValue(Error &&E) : Value(std::move(E)) {}
 
 private:
