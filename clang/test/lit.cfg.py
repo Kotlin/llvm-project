@@ -285,9 +285,10 @@ if config.clang_default_cxx_stdlib != "":
         "default-cxx-stdlib={}".format(config.clang_default_cxx_stdlib)
     )
 
-# As of 2011.08, crash-recovery tests still do not pass on FreeBSD.
-if platform.system() not in ["FreeBSD"]:
-    config.available_features.add("crash-recovery")
+# KOTLIN/NATIVE specific hack: Signal handler is disabled by Kotlin/Native patch in Signals.inc
+# # As of 2011.08, crash-recovery tests still do not pass on FreeBSD.
+# if platform.system() not in ["FreeBSD"]:
+#     config.available_features.add("crash-recovery")
 
 # ANSI escape sequences in non-dumb terminal
 if platform.system() not in ["Windows"]:
