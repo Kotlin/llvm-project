@@ -91,6 +91,24 @@ TEST(SMEAttributes, Constructors) {
                      "SM_Enabled and SM_Compatible are mutually exclusive");
 }
 
+TEST(SMEAttributes, MixedFunctionAttributes) {
+  auto M = parseIR(R"(
+    declare void @foo() nounwind
+      "target-cpu"="generic"
+      "pstate_sm_enabled"
+      "aarch64_pstate_sm_enabled_suffix"
+      "aarch64_pstate_sm_body"="false"
+      "aarch64_pstate_sm_compatible"
+      "aarch64_za_state_agnostic"
+  )");
+  ASSERT_TRUE(M);
+
+  // String attributes are presence flags, regardless of their values.
+  // Unrelated attributes, including near matches, must not set SME bits.
+  EXPECT_EQ(SA(*M->getFunction("foo")),
+            SA(SA::SM_Body | SA::SM_Compatible | SA::ZA_State_Agnostic));
+}
+
 TEST(SMEAttributes, Basics) {
   // Test PSTATE.SM interfaces.
   ASSERT_TRUE(SA(SA::Normal).hasNonStreamingInterfaceAndBody());
