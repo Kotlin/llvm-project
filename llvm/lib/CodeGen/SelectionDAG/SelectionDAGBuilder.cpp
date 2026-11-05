@@ -7517,6 +7517,12 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
     setValue(&I, getValue(I.getArgOperand(0)));
     return;
 
+  case Intrinsic::kn_conceal:
+  case Intrinsic::kn_publish:
+    // Identity lowering: the result is the argument's SDValue.
+    setValue(&I, getValue(I.getArgOperand(0)));
+    return;
+
   case Intrinsic::ubsantrap:
   case Intrinsic::debugtrap:
   case Intrinsic::trap: {

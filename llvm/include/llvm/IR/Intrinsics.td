@@ -1906,6 +1906,16 @@ def int_donothing : DefaultAttrsIntrinsic<[], [], [IntrNoMem]>;
 // which specify that infinite loops must be preserved.
 def int_sideeffect : DefaultAttrsIntrinsic<[], [], [IntrInaccessibleMemOnly]>;
 
+// Identity intrinsics used by the Kotlin/Native codegen to bridge between
+// address spaces: kn.conceal moves a GC-visible (AS1) pointer into the
+// default address space, kn.publish does the reverse. Both are modeled like
+// int_sideeffect so they are not hoisted, eliminated, or reordered across
+// memory operations.
+def int_kn_conceal : DefaultAttrsIntrinsic<[llvm_ptr_ty], [LLVMQualPointerType<1>],
+    [IntrInaccessibleMemOnly]>;
+def int_kn_publish : DefaultAttrsIntrinsic<[LLVMQualPointerType<1>], [llvm_ptr_ty],
+    [IntrInaccessibleMemOnly]>;
+
 // The pseudoprobe intrinsic works as a place holder to the block it probes.
 // Like the sideeffect intrinsic defined above, this intrinsic is treated by the
 // optimizer as having opaque side effects so that it won't be get rid of or moved
