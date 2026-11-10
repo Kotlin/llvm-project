@@ -14,6 +14,7 @@
 #define LLVM_MC_MCSTREAMER_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
@@ -772,6 +773,11 @@ public:
   /// Special case of EmitSLEB128Value that avoids the client having to
   /// pass in a MCExpr for constant integers.
   unsigned emitSLEB128IntValue(int64_t Value);
+
+  /// Emit \p Vector as a packed ULEB128 bit sequence (see
+  /// llvm::encodeULEB128(const BitVector&, raw_ostream&) in LEB128.h for the
+  /// exact encoding). Returns the number of bytes emitted.
+  unsigned emitULEB128BitVector(const BitVector &Vector);
 
   /// Special case of EmitValue that avoids the client having to pass in
   /// a MCExpr for MCSymbols.

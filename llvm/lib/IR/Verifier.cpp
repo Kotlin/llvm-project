@@ -6039,18 +6039,25 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
           "gc.result result type does not match wrapped callee", Call);
     break;
   }
+  case Intrinsic::experimental_kn_gc_relocate:
   case Intrinsic::experimental_gc_relocate: {
     Check(Call.arg_size() == 3, "wrong number of arguments", Call);
 
     Check(isa<PointerType>(Call.getType()->getScalarType()),
           "gc.relocate must return a pointer or a vector of pointers", Call);
 
+    Value *Arg0 = Call.getArgOperand(0);
+
+    LandingPadInst *LandingPad = dyn_cast<LandingPadInst>(Arg0);
+    if (!LandingPad) {
+      if (auto *EVI = dyn_cast<ExtractValueInst>(Arg0))
+        LandingPad = dyn_cast<LandingPadInst>(EVI->getAggregateOperand());
+    }
+
     // Check that this relocate is correctly tied to the statepoint
 
     // This is case for relocate on the unwinding path of an invoke statepoint
-    if (LandingPadInst *LandingPad =
-            dyn_cast<LandingPadInst>(Call.getArgOperand(0))) {
-
+    if (LandingPad) {
       const BasicBlock *InvokeBB =
           LandingPad->getParent()->getUniquePredecessor();
 

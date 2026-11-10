@@ -505,6 +505,18 @@ public:
 
   bool operator!=(const BitVector &RHS) const { return !(*this == RHS); }
 
+  /// Lexicographic ordering by (size, then word contents).
+  /// This does not correspond to any bit-numeric ordering.
+  friend bool operator<(const BitVector &LHS, const BitVector &RHS) {
+    if (LHS.size() != RHS.size())
+      return LHS.size() < RHS.size();
+
+    ArrayRef<BitWord> LData = LHS.getData();
+    ArrayRef<BitWord> RData = RHS.getData();
+    return std::lexicographical_compare(LData.begin(), LData.end(),
+                                         RData.begin(), RData.end());
+  }
+
   /// Intersection, union, disjoint union.
   BitVector &operator&=(const BitVector &RHS) {
     unsigned ThisWords = Bits.size();

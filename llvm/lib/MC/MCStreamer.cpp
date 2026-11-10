@@ -176,6 +176,14 @@ unsigned MCStreamer::emitSLEB128IntValue(int64_t Value) {
   return Tmp.size();
 }
 
+unsigned MCStreamer::emitULEB128BitVector(const BitVector &Vector) {
+  SmallString<128> Tmp;
+  raw_svector_ostream OSE(Tmp);
+  encodeULEB128(Vector, OSE);
+  emitBytes(OSE.str());
+  return Tmp.size();
+}
+
 void MCStreamer::emitValue(const MCExpr *Value, unsigned Size, SMLoc Loc) {
   emitValueImpl(Value, Size, Loc);
 }

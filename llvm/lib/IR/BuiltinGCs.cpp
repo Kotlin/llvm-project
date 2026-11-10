@@ -114,6 +114,33 @@ public:
   }
 };
 
+/// The GC strategy used by the Kotlin/Native compiler backend. Like
+/// StatepointGC, this is a statepoint-based, addrspace(1)-managed strategy;
+/// it exists as a separate strategy (rather than reusing "statepoint-
+/// example") so that the Kotlin/Native-specific delta-main stack-map format
+/// (KotlinNativeGCPrinter, registered for GC name "kotlin-native") can be
+/// selected purely by a function's `gc "kotlin-native"` attribute, without
+/// affecting other statepoint-based GC users of this strategy name.
+class KotlinNativeGC : public GCStrategy {
+public:
+  KotlinNativeGC() {
+    UseStatepoints = true;
+    UseRS4GC = true;
+    // These options are all gc.root specific, we specify them so that the
+    // gc.root lowering code doesn't run.
+    NeededSafePoints = false;
+    UsesMetadata = true;
+    ForceRegisterSpill = true;
+  }
+
+  std::optional<bool> isGCManagedPointer(const Type *Ty) const override {
+    // Method is only valid on pointer typed values.
+    const PointerType *PT = cast<PointerType>(Ty);
+    // Kotlin/Native uses addrspace(1) for its GC-managed heap.
+    return (1 == PT->getAddressSpace());
+  }
+};
+
 } // end anonymous namespace
 
 // Register all the above so that they can be found at runtime.  Note that
@@ -127,6 +154,8 @@ static GCRegistry::Add<ShadowStackGC>
 static GCRegistry::Add<StatepointGC> D("statepoint-example",
                                        "an example strategy for statepoint");
 static GCRegistry::Add<CoreCLRGC> E("coreclr", "CoreCLR-compatible GC");
+static GCRegistry::Add<KotlinNativeGC>
+    F("kotlin-native", "Kotlin/Native GC strategy (delta-main stack maps)");
 
 // Provide hook to ensure the containing library is fully loaded.
 void llvm::linkAllBuiltinGCs() {}

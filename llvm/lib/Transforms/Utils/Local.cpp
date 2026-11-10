@@ -26,6 +26,7 @@
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/DomTreeUpdater.h"
 #include "llvm/Analysis/InstructionSimplify.h"
+#include "llvm/Analysis/KotlinNativeLibraryInfo.h"
 #include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/MemorySSAUpdater.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -3647,6 +3648,16 @@ bool llvm::callsGCLeafFunction(const CallBase *Call,
   LibFunc LF;
   if (TLI.getLibFunc(*Call, LF)) {
     return TLI.has(LF);
+  }
+
+  // Same idea, but for our own small, hand-verified registry of
+  // Kotlin/Native runtime helper functions that are known never to touch
+  // Kotlin objects, allocate, or take a safepoint.
+  const Function *Caller = Call->getParent()->getParent();
+  if (Caller->hasGC() && Caller->getGC() == "kotlin-native") {
+    KotlinNativeLibFunc KF;
+    if (getKotlinNativeLibFunc(*Call, KF))
+      return true;
   }
 
   return false;

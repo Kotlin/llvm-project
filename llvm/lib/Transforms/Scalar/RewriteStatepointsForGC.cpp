@@ -538,6 +538,7 @@ static Value *findBaseDefiningValue(Value *I, DefiningValueMapTy &Cache,
       break;
     case Intrinsic::experimental_gc_statepoint:
       llvm_unreachable("statepoints don't produce pointers");
+    case Intrinsic::experimental_kn_gc_relocate:
     case Intrinsic::experimental_gc_relocate:
       // Rerunning safepoint insertion after safepoints are already
       // inserted is not supported.  It could probably be made to work,
@@ -1515,6 +1516,14 @@ static void CreateGCRelocates(ArrayRef<Value *> LiveVariables,
     return Index;
   };
   Module *M = StatepointToken->getModule();
+  bool UseKNRelocate = isa<LandingPadInst>(StatepointToken) &&
+                       !StatepointToken->getType()->isTokenTy();
+  // On the exceptional path StatepointToken is a real landingpad, which has
+  // a fixed (non-`token`) type that experimental_gc_relocate's first
+  // argument rejects. kn_gc_relocate takes a plain i32 instead, so it can be
+  // used here in place of the normal intrinsic.
+  int IntrinsicId = UseKNRelocate ? Intrinsic::experimental_kn_gc_relocate
+                                  : Intrinsic::experimental_gc_relocate;
 
   // All gc_relocate are generated as i8 addrspace(1)* (or a vector type whose
   // element type is i8 addrspace(1)*). We originally generated unique
@@ -1531,7 +1540,7 @@ static void CreateGCRelocates(ArrayRef<Value *> LiveVariables,
       NewTy = FixedVectorType::get(NewTy,
                                    cast<FixedVectorType>(VT)->getNumElements());
     return Intrinsic::getOrInsertDeclaration(
-        M, Intrinsic::experimental_gc_relocate, {NewTy});
+        M, IntrinsicId, {NewTy});
   };
 
   // Lazily populated map from input types to the canonicalized form mentioned
@@ -1550,9 +1559,13 @@ static void CreateGCRelocates(ArrayRef<Value *> LiveVariables,
       It->second = getGCRelocateDecl(Ty);
     Function *GCRelocateDecl = It->second;
 
+    Value *Token = StatepointToken;
+    if (UseKNRelocate)
+      Token = Builder.CreateExtractValue(StatepointToken, {1});
+
     // only specify a debug name if we can give a useful one
     CallInst *Reloc = Builder.CreateCall(
-        GCRelocateDecl, {StatepointToken, BaseIdx, LiveIdx},
+        GCRelocateDecl, {Token, BaseIdx, LiveIdx},
         suffixed_name_or(LiveVariables[i], ".relocated", ""));
     // Trick CodeGen into thinking there are lots of free registers at this
     // fake call.
@@ -1972,6 +1985,16 @@ insertRelocationStores(iterator_range<Value::user_iterator> GCRelocs,
                        DenseMap<Value *, AllocaInst *> &AllocaMap,
                        DenseSet<Value *> &VisitedLiveValues) {
   for (User *U : GCRelocs) {
+    /* kn_gc_relocated is user of extractValueInst */
+    if (!isa<GCRelocateInst>(U) && !isa<ExtractValueInst>(U)) {
+      continue;
+    }
+    auto *EVI = dyn_cast<ExtractValueInst>(U);
+    if (EVI && U->hasOneUse()) {
+      U = *EVI->user_begin();
+    }
+    /* end kn_gc_relocated */
+
     GCRelocateInst *Relocate = dyn_cast<GCRelocateInst>(U);
     if (!Relocate)
       continue;
@@ -3044,6 +3067,8 @@ bool RewriteStatepointsForGC::runOnFunction(Function &F, DominatorTree &DT,
       if (isa<GCStatepointInst>(Call))
         return false;
       if (callsGCLeafFunction(Call, TLI))
+        return false;
+      if (Call->isInlineAsm())
         return false;
 
       // Normally it's up to the frontend to make sure that non-leaf calls also

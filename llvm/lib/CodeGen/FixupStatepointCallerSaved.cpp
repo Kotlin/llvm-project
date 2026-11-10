@@ -27,9 +27,11 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/StackMaps.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
+#include "llvm/IR/GCStrategy.h"
 #include "llvm/IR/Statepoint.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
+#include <memory>
 
 using namespace llvm;
 
@@ -563,11 +565,12 @@ private:
   const TargetRegisterInfo &TRI;
   FrameIndexesCache CacheFI;
   RegReloadCache ReloadCache;
+  bool NeedForceRegisterSpill;
 
 public:
-  StatepointProcessor(MachineFunction &MF)
+  StatepointProcessor(MachineFunction &MF, bool NeedForceRegisterSpill)
       : MF(MF), TRI(*MF.getSubtarget().getRegisterInfo()),
-        CacheFI(MF.getFrameInfo(), TRI) {}
+        CacheFI(MF.getFrameInfo(), TRI), NeedForceRegisterSpill(NeedForceRegisterSpill) {}
 
   bool process(MachineInstr &MI, bool AllowGCPtrInCSR) {
     StatepointOpers SO(&MI);
@@ -579,7 +582,8 @@ public:
                       << MI.getParent()->getName() << " : process statepoint "
                       << MI);
     CallingConv::ID CC = SO.getCallingConv();
-    const uint32_t *Mask = TRI.getCallPreservedMask(MF, CC);
+    const uint32_t *Mask = NeedForceRegisterSpill ? TRI.getNoPreservedMask()
+                                                  : TRI.getCallPreservedMask(MF, CC);
     StatepointState SS(MI, Mask, CacheFI, AllowGCPtrInCSR);
     CacheFI.reset(SS.getEHPad());
 
@@ -609,7 +613,8 @@ bool FixupStatepointCallerSavedImpl::run(MachineFunction &MF) {
     return false;
 
   bool Changed = false;
-  StatepointProcessor SPP(MF);
+  std::unique_ptr<GCStrategy> Strategy = getGCStrategy(F.getGC());
+  StatepointProcessor SPP(MF, Strategy->needForceRegisterSpill());
   unsigned NumStatepoints = 0;
   bool AllowGCPtrInCSR = PassGCPtrInCSR;
   for (MachineInstr *I : Statepoints) {

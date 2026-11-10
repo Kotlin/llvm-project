@@ -1125,6 +1125,15 @@ void AArch64AsmPrinter::emitLOHs() {
 void AArch64AsmPrinter::emitFunctionBodyEnd() {
   if (!AArch64FI->getLOHRelated().empty())
     emitLOHs();
+
+  const Function &F = MF->getFunction();
+  if (!F.hasGC() || F.getGC() != "kotlin-native")
+    return;
+  auto &FnInfos = SM.getFnInfos();
+  if (auto It = FnInfos.find(CurrentFnSym); It != FnInfos.end()) {
+    It->second.End = createTempSymbol("kn_func_end");
+    OutStreamer->emitLabel(It->second.End);
+  }
 }
 
 /// GetCPISymbol - Return the symbol for the specified constant pool entry.
@@ -2910,6 +2919,32 @@ void AArch64AsmPrinter::emitInstruction(const MachineInstr *MI) {
       }
     }
     break;
+  }
+  case AArch64::KNStackMapAddr: {
+    // Loads the address of the stack map record of this function: the label that
+    // DeltaMainStackMapEncoder::emit puts before the record (keep the names in
+    // sync). The prologue stores it in the frame, and the GC finds the record
+    // of every frame from there.
+    MCSymbol *Start = OutContext.getOrCreateSymbol(
+        ".Lstackmap_delta_main_start." + CurrentFnSym->getName());
+    Register DestReg = MI->getOperand(0).getReg();
+    const MCExpr *Page, *PageOff;
+    if (TM.getTargetTriple().isOSBinFormatMachO()) {
+      Page = MCSymbolRefExpr::create(Start, AArch64::S_MACHO_PAGE, OutContext);
+      PageOff = MCSymbolRefExpr::create(Start, AArch64::S_MACHO_PAGEOFF, OutContext);
+    } else {
+      const MCExpr *Ref = MCSymbolRefExpr::create(Start, OutContext);
+      Page = MCSpecifierExpr::create(Ref, AArch64::S_ABS | AArch64::S_PAGE, OutContext);
+      PageOff = MCSpecifierExpr::create(Ref, AArch64::S_ABS | AArch64::S_PAGEOFF | AArch64::S_NC, OutContext);
+    }
+    EmitToStreamer(*OutStreamer,
+                   MCInstBuilder(AArch64::ADRP).addReg(DestReg).addExpr(Page));
+    EmitToStreamer(*OutStreamer, MCInstBuilder(AArch64::ADDXri)
+                                     .addReg(DestReg)
+                                     .addReg(DestReg)
+                                     .addExpr(PageOff)
+                                     .addImm(0));
+    return;
   }
     case AArch64::MOVMCSym: {
       Register DestReg = MI->getOperand(0).getReg();

@@ -24,6 +24,7 @@
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfoMetadata.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Operator.h"
@@ -847,6 +848,12 @@ const Value *GCProjectionInst::getStatepoint() const {
   // Treat none token as if it was undef here
   if (isa<ConstantTokenNone>(Token))
     return UndefValue::get(Token->getType());
+
+  // This is ExtractValueInst, find LandingPadInst
+  if (isa<ExtractValueInst>(Token))  {
+    Token = cast<ExtractValueInst>(Token)->getAggregateOperand();
+    assert(isa<LandingPadInst>(Token) && "extractValueInst should have landingpad");
+  }
 
   // This takes care both of relocates for call statepoints and relocates
   // on normal path of invoke statepoint.

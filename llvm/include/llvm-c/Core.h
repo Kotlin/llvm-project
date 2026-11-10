@@ -4685,6 +4685,8 @@ LLVM_C_ABI LLVMValueRef LLVMBuildMemMove(LLVMBuilderRef B, LLVMValueRef Dst,
 
 LLVM_C_ABI LLVMValueRef LLVMBuildAlloca(LLVMBuilderRef, LLVMTypeRef Ty,
                                         const char *Name);
+LLVM_C_ABI LLVMValueRef LLVMBuildAllocaInAddrspace(LLVMBuilderRef, LLVMTypeRef Ty,
+                                        const char *Name, unsigned AddrSpace);
 LLVM_C_ABI LLVMValueRef LLVMBuildArrayAlloca(LLVMBuilderRef, LLVMTypeRef Ty,
                                              LLVMValueRef Val,
                                              const char *Name);

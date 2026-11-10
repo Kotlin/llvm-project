@@ -1,0 +1,83 @@
+//===-- KotlinNativeLibraryInfo.def - Kotlin Native Library information -------------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
+#if (defined(KNLI_DEFINE_ENUM) +                 \
+     defined(KNLI_DEFINE_STRING) +               \
+     defined(KNLI_DEFINE_SIG) != 1)
+#error "Must define exactly one of KNLI_DEFINE_ENUM, KNLI_DEFINE_STRING, or KNLI_DEFINE_SIG for KNLI .def."
+#else
+// Exactly one of KNLI_DEFINE_ENUM/STRING/SIG is defined.
+
+#if defined(KNLI_DEFINE_ENUM)
+#define KNLI_DEFINE_ENUM_INTERNAL(enum_variant) KotlinNativeLibFunc_##enum_variant,
+#define KNLI_DEFINE_STRING_INTERNAL(string_repr)
+#define KNLI_DEFINE_SIG_INTERNAL(...)
+#elif defined(KNLI_DEFINE_STRING)
+#define KNLI_DEFINE_ENUM_INTERNAL(enum_variant)
+#define KNLI_DEFINE_STRING_INTERNAL(string_repr) string_repr,
+#define KNLI_DEFINE_SIG_INTERNAL(...)
+#else
+#define KNLI_DEFINE_ENUM_INTERNAL(enum_variant)
+#define KNLI_DEFINE_STRING_INTERNAL(string_repr)
+#define KNLI_DEFINE_SIG_INTERNAL(...) { __VA_ARGS__ },
+#endif
+
+/// void consolePrintf(const char* format, ...);
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_console_printf_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN5konan13consolePrintfEPKcz")
+KNLI_DEFINE_SIG_INTERNAL(Void, Ptr, Ellip)
+
+/// void consoleErrorf(const char* format, ...);
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_console_errorf_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN5konan13consoleErrorfEPKcz")
+KNLI_DEFINE_SIG_INTERNAL(Void, Ptr, Ellip)
+
+/// std_support::span<char> kotlin::FormatToSpan(std_support::span<char> buffer, const char* format, ...) noexcept;
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_format_to_span_struct_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN6kotlin12FormatToSpanENS_11std_support4spanIcLm18446744073709551615EEEPKcz")
+KNLI_DEFINE_SIG_INTERNAL(Any, Struct, Ptr, Ellip)
+
+/// void kotlin::logging::Log(kotlin::logging::Level level, std::initializer_list<kotlin::logging::Tag> tags, const char* format, ...) noexcept;
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_logging_log_int_struct_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN6kotlin7logging3LogENS0_5LevelESt16initializer_listINS0_3TagEEPKcz")
+KNLI_DEFINE_SIG_INTERNAL(Void, Int32, Struct, Ptr, Ellip)
+
+/// void kotlin::internal::RuntimeAssertFailedLog(bool allowStacktrace, const char* location, const char* format, ...);
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_runtime_assert_failed_log_bool_ptr_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN6kotlin8internal22RuntimeAssertFailedLogEbPKcS2_z")
+KNLI_DEFINE_SIG_INTERNAL(Void, Bool, Ptr, Ptr, Ellip)
+
+/// RUNTIME_NORETURN void kotlin::internal::RuntimeAssertFailedPanic(bool allowStacktrace, const char* location, const char* format, ...);
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_runtime_assert_failed_panic_bool_ptr_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN6kotlin8internal24RuntimeAssertFailedPanicEbPKcS2_z")
+KNLI_DEFINE_SIG_INTERNAL(Void, Bool, Ptr, Ptr, Ellip)
+
+/// std_support::span<char> kotlin::snprintf_with_addr(std_support::span<char> buffer, size_t frame, const void* addr, bool is_inline, const char* format, ...);
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_snprintf_with_addr_struct_long_ptr_bool_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN6kotlin18snprintf_with_addrENS_11std_support4spanIcLm18446744073709551615EEEmPKvbPKcz")
+KNLI_DEFINE_SIG_INTERNAL(Any, Struct, Long, Ptr, Bool, Ptr, Ellip)
+
+/// RUNTIME_NORETURN void kotlin::throwReadingRandomBytesFailed(const char* format, ...);
+KNLI_DEFINE_ENUM_INTERNAL(kotlin_native_throw_reading_random_bytes_failed_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("_ZN6kotlin29throwReadingRandomBytesFailedEPKcz")
+KNLI_DEFINE_SIG_INTERNAL(Void, Ptr, Ellip)
+
+/// id objc_msgSend(id self, SEL op, ...);
+KNLI_DEFINE_ENUM_INTERNAL(objc_msg_send_ptr_ptr_ellip)
+KNLI_DEFINE_STRING_INTERNAL("objc_msgSend")
+KNLI_DEFINE_SIG_INTERNAL(Any, Ptr, Ptr, Ellip)
+
+#undef KNLI_DEFINE_ENUM_INTERNAL
+#undef KNLI_DEFINE_STRING_INTERNAL
+#undef KNLI_DEFINE_SIG_INTERNAL
+#endif  // One of KNLI_DEFINE_ENUM/STRING are defined.
+
+#undef KNLI_DEFINE_ENUM
+#undef KNLI_DEFINE_STRING
+#undef KNLI_DEFINE_SIG
+

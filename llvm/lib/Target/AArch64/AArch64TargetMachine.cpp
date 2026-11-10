@@ -300,7 +300,7 @@ static std::string computeDataLayout(const Triple &TT,
       return "e-m:o-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-"
              "n32:64-S128-Fn32";
     return "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-"
-           "Fn32";
+           "Fn32-ni:1";
   }
   if (TT.isOSBinFormatCOFF())
     return "e-m:w-p270:32:32-p271:32:32-p272:64:64-p:64:64-i32:32-i64:64-i128:"

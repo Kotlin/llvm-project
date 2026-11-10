@@ -6944,6 +6944,7 @@ static Value *simplifyIntrinsic(CallBase *Call, Value *Callee,
   }
   case Intrinsic::experimental_constrained_ldexp:
     return simplifyLdexp(Args[0], Args[1], Q, true);
+  case Intrinsic::experimental_kn_gc_relocate:
   case Intrinsic::experimental_gc_relocate: {
     GCRelocateInst &GCR = *cast<GCRelocateInst>(Call);
     Value *DerivedPtr = GCR.getDerivedPtr();

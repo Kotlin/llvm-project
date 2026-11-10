@@ -10,6 +10,7 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/BinaryFormat/COFF.h"
 #include "llvm/BinaryFormat/ELF.h"
+#include "llvm/BinaryFormat/MachO.h"
 #include "llvm/BinaryFormat/Wasm.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
@@ -313,7 +314,7 @@ void MCObjectFileInfo::initMachOMCObjectFileInfo(const Triple &T) {
       Ctx->getMachOSection("__DWARF", "__debug_tu_index", MachO::S_ATTR_DEBUG,
                            SectionKind::getMetadata());
   StackMapSection = Ctx->getMachOSection("__LLVM_STACKMAPS", "__llvm_stackmaps",
-                                         0, SectionKind::getMetadata());
+                                         MachO::S_ATTR_NO_DEAD_STRIP, SectionKind::getMetadata());
 
   FaultMapSection = Ctx->getMachOSection("__LLVM_FAULTMAPS", "__llvm_faultmaps",
                                          0, SectionKind::getMetadata());

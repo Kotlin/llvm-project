@@ -30,6 +30,9 @@ LLVM_ABI void linkOcamlGCPrinter();
 /// Creates an erlang-compatible metadata printer.
 LLVM_ABI void linkErlangGCPrinter();
 
+/// Creates the delta-main stack-map printer.
+LLVM_ABI void linkKotlinNativeGCPrinter();
+
 } // namespace llvm
 
 #endif // LLVM_IR_BUILTINGCS_H
