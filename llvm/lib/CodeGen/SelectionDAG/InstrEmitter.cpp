@@ -151,7 +151,8 @@ void InstrEmitter::EmitCopyFromReg(SDNode *Node, unsigned ResNo, bool IsClone,
   }
 
   const TargetRegisterClass *SrcRC = nullptr, *DstRC = nullptr;
-  SrcRC = TRI->getMinimalPhysRegClass(SrcReg, VT);
+  if (MatchReg || (!VRBase && !UseRC))
+    SrcRC = TRI->getMinimalPhysRegClass(SrcReg, VT);
 
   // Figure out the register class to create for the destreg.
   if (VRBase) {
