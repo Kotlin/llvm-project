@@ -573,7 +573,7 @@ decomposeGEP(GEPOperator &GEP, SmallVectorImpl<ConditionTy> &Preconditions,
 static Decomposition decompose(Value *V,
                                SmallVectorImpl<ConditionTy> &Preconditions,
                                bool IsSigned, State &State) {
-  auto DL = State.DL;
+  const auto &DL = State.DL;
   auto MergeResults = [&Preconditions, IsSigned, &State](
                           Value *A, Value *B, bool IsSignedB) -> std::optional<Decomposition> {
     auto ResA = decompose(A, Preconditions, IsSigned, State);
@@ -928,7 +928,7 @@ ConstraintInfo::getConstraintForSolving(CmpInst::Predicate Pred, Value *Op0,
                         false, false);
   }
 
-  auto DL = State.DL;
+  const auto &DL = State.DL;
   // If both operands are known to be non-negative, change signed predicates to
   // unsigned ones. This increases the reasoning effectiveness in combination
   // with the signed <-> unsigned transfer logic.
