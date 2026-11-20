@@ -981,7 +981,8 @@ void TargetPassConfig::addISelPrepare() {
 
 bool TargetPassConfig::addCoreISelPasses() {
   // Enable FastISel with -fast-isel, but allow that to be overridden.
-  TM->setO0WantsFastISel(EnableFastISelOption != cl::BOU_FALSE);
+  if (EnableFastISelOption.getNumOccurrences())
+       TM->setO0WantsFastISel(EnableFastISelOption == cl::BOU_TRUE);
 
   // Determine an instruction selector.
   enum class SelectorType { SelectionDAG, FastISel, GlobalISel };
