@@ -894,7 +894,8 @@ template <typename Derived, typename TargetMachineT>
 Error CodeGenPassBuilder<Derived, TargetMachineT>::addCoreISelPasses(
     AddMachinePass &addPass) const {
   // Enable FastISel with -fast-isel, but allow that to be overridden.
-  TM.setO0WantsFastISel(Opt.EnableFastISelOption.value_or(true));
+  if (Opt.EnableFastISelOption)
+      TM.setO0WantsFastISel(*Opt.EnableFastISelOption);
 
   // Determine an instruction selector.
   enum class SelectorType { SelectionDAG, FastISel, GlobalISel };
