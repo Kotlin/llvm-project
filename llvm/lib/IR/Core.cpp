@@ -3898,6 +3898,11 @@ LLVMValueRef LLVMBuildAlloca(LLVMBuilderRef B, LLVMTypeRef Ty,
   return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), nullptr, Name));
 }
 
+LLVMValueRef LLVMBuildAllocaInAddrspace(LLVMBuilderRef B, LLVMTypeRef Ty,
+                             const char *Name, unsigned Addrspace) {
+  return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), Addrspace, nullptr, Name));
+}
+
 LLVMValueRef LLVMBuildArrayAlloca(LLVMBuilderRef B, LLVMTypeRef Ty,
                                   LLVMValueRef Val, const char *Name) {
   return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), unwrap(Val), Name));

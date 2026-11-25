@@ -222,6 +222,14 @@ std::vector<const GCRelocateInst *> GCStatepointInst::getGCRelocates() const {
 
   // Search for gc relocates that are attached to this landingpad.
   for (const User *LandingPadUser : LandingPad->users()) {
+    // Search for gc relocates that are attached to ExtractValueInst
+    if (auto *EVI = dyn_cast<ExtractValueInst>(LandingPadUser)) {
+      for (const User *EVIUser : EVI->users()) {
+        if (auto *Relocate = dyn_cast<GCRelocateInst>(EVIUser))
+          Result.push_back(Relocate);
+      }
+    }
+
     if (auto *Relocate = dyn_cast<GCRelocateInst>(LandingPadUser))
       Result.push_back(Relocate);
   }

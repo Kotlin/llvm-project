@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <tuple>
 #include <vector>
 
 namespace llvm {
@@ -276,6 +277,18 @@ public:
     Location() = default;
     Location(LocationType Type, uint16_t Size, uint16_t Reg, int32_t Offset)
         : Type(Type), Size(Size), Reg(Reg), Offset(Offset) {}
+
+    friend bool operator==(const Location &LHS, const Location &RHS) {
+      return std::tie(LHS.Type, LHS.Reg, LHS.Offset, LHS.Size) ==
+             std::tie(RHS.Type, RHS.Reg, RHS.Offset, RHS.Size);
+    }
+    friend bool operator!=(const Location &LHS, const Location &RHS) {
+      return !(LHS == RHS);
+    }
+    friend bool operator<(const Location &LHS, const Location &RHS) {
+      return std::tie(LHS.Type, LHS.Reg, LHS.Offset, LHS.Size) <
+             std::tie(RHS.Type, RHS.Reg, RHS.Offset, RHS.Size);
+    }
   };
 
   struct LiveOutReg {
@@ -313,9 +326,12 @@ public:
   struct FunctionInfo {
     uint64_t StackSize = 0;
     uint64_t RecordCount = 1;
+    int64_t FPtoSPDelta = 0;
+    MCSymbol *End = nullptr;
 
     FunctionInfo() = default;
-    explicit FunctionInfo(uint64_t StackSize) : StackSize(StackSize) {}
+    explicit FunctionInfo(uint64_t StackSize) : StackSize(StackSize) {};
+    explicit FunctionInfo(uint64_t StackSize, int64_t FPtoSPDelta) : StackSize(StackSize), FPtoSPDelta(FPtoSPDelta) {};
   };
 
   struct CallsiteInfo {
@@ -324,11 +340,22 @@ public:
     LocationVec Locations;
     LiveOutVec LiveOuts;
 
+    /// For a STATEPOINT callsite, the number of trailing entries in
+    /// \c Locations that record `gc.statepoint` alloca operands (as opposed
+    /// to deopt args or base/derived GC-pointer pairs). Zero for
+    /// STACKMAP/PATCHPOINT callsites. Consumers that need to recover the
+    /// base/derived-pointer structure of \c Locations (e.g.
+    /// DeltaMainStackMapEncoder) need this count because, unlike the deopt
+    /// argument count, it is not otherwise recoverable from \c Locations
+    /// alone.
+    unsigned NumAllocas = 0;
+
     CallsiteInfo() = default;
     CallsiteInfo(const MCExpr *CSOffsetExpr, uint64_t ID,
-                 LocationVec &&Locations, LiveOutVec &&LiveOuts)
+                 LocationVec &&Locations, LiveOutVec &&LiveOuts,
+                 unsigned NumAllocas = 0)
         : CSOffsetExpr(CSOffsetExpr), ID(ID), Locations(std::move(Locations)),
-          LiveOuts(std::move(LiveOuts)) {}
+          LiveOuts(std::move(LiveOuts)), NumAllocas(NumAllocas) {}
   };
 
   using FnInfoMap = MapVector<const MCSymbol *, FunctionInfo>;
@@ -371,10 +398,14 @@ private:
 
   /// Specialized parser of statepoint operands.
   /// They do not directly correspond to StackMap record entries.
-  void parseStatepointOpers(const MachineInstr &MI,
-                            MachineInstr::const_mop_iterator MOI,
-                            MachineInstr::const_mop_iterator MOE,
-                            LocationVec &Locations, LiveOutVec &LiveOuts);
+  ///
+  /// \returns the number of trailing entries appended to Locations that
+  /// correspond to `gc.statepoint` alloca operands (see
+  /// CallsiteInfo::NumAllocas).
+  unsigned parseStatepointOpers(const MachineInstr &MI,
+                                MachineInstr::const_mop_iterator MOI,
+                                MachineInstr::const_mop_iterator MOE,
+                                LocationVec &Locations, LiveOutVec &LiveOuts);
 
   /// Create a live-out register record for the given register @p Reg.
   LiveOutReg createLiveOutReg(unsigned Reg,

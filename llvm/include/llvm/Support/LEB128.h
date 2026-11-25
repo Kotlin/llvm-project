@@ -14,6 +14,7 @@
 #ifndef LLVM_SUPPORT_LEB128_H
 #define LLVM_SUPPORT_LEB128_H
 
+#include "llvm/ADT/BitVector.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -95,6 +96,31 @@ inline unsigned encodeULEB128(uint64_t Value, raw_ostream &OS,
     for (; Count < PadTo - 1; ++Count)
       OS << '\x80';
     OS << '\x00';
+    Count++;
+  }
+  return Count;
+}
+
+/// Utility function to encode a bit vector to an output stream as a packed
+/// ULEB128 sequence.
+/// Returns the length in bytes of the encoded value.
+inline unsigned encodeULEB128(const BitVector &Vector, raw_ostream &OS) {
+  int LastBit = Vector.find_last();
+  if (LastBit < 0) {
+    OS << char(0);
+    return 1;
+  }
+
+  unsigned Count = 0;
+  for (int I = 0; I <= LastBit; I += 7) {
+    uint8_t Byte = 0;
+    for (int J = 0; J < 7; ++J) {
+      if (I + J <= LastBit && Vector[I + J])
+        Byte |= (1 << J);
+    }
+    if (I + 7 <= LastBit)
+      Byte |= 0x80; // Mark this byte to show that more bytes will follow.
+    OS << char(Byte);
     Count++;
   }
   return Count;

@@ -2149,7 +2149,7 @@ static bool canSinkInstructions(
   for (auto *I : Insts) {
     // These instructions may change or break semantics if moved.
     if (isa<PHINode>(I) || I->isEHPad() || isa<AllocaInst>(I) ||
-        I->getType()->isTokenTy())
+        I->getType()->isTokenTy() || isa<GCRelocateInst>(I))
       return false;
 
     // Do not try to sink an instruction in an infinite loop - it can cause

@@ -53,6 +53,7 @@ public:
   }
 
   unsigned getTypeAndAttributes() const { return TypeAndAttributes; }
+  void clearAttribute(unsigned Value) { TypeAndAttributes &= ~Value; }
   unsigned getStubSize() const { return Reserved2; }
 
   MachO::SectionType getType() const {

@@ -905,6 +905,7 @@ public:
     case Intrinsic::var_annotation:
     case Intrinsic::experimental_gc_result:
     case Intrinsic::experimental_gc_relocate:
+    case Intrinsic::experimental_kn_gc_relocate:
     case Intrinsic::coro_alloc:
     case Intrinsic::coro_begin:
     case Intrinsic::coro_begin_custom_abi:

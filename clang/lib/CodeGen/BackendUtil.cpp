@@ -87,6 +87,7 @@
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/JumpThreading.h"
+#include "llvm/Transforms/Scalar/RewriteStatepointsForGC.h"
 #include "llvm/Transforms/Utils/Debugify.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include <limits>
@@ -104,6 +105,11 @@ namespace llvm {
 static cl::opt<bool> ClSanitizeOnOptimizerEarlyEP(
     "sanitizer-early-opt-ep", cl::Optional,
     cl::desc("Insert sanitizers on OptimizerEarlyEP."));
+
+static cl::opt<bool> ForceRewriteStatepointsForGC(
+    "force-rewrite-statepoints-for-gc", llvm::cl::Hidden, llvm::cl::init(false),
+    llvm::cl::desc(
+        "Run RewriteStatepointsForGC even when -disable-llvm-passes is set "));
 
 // Experiment to mark cold functions as optsize/minsize/optnone.
 // TODO: remove once this is exposed as a proper driver flag.
@@ -1154,6 +1160,8 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
     } else {
       MPM.addPass(PB.buildPerModuleDefaultPipeline(Level));
     }
+  } else if (ForceRewriteStatepointsForGC) {
+    MPM.addPass(RewriteStatepointsForGC());
   }
 
   // Link against bitcodes supplied via the -mlink-builtin-bitcode option

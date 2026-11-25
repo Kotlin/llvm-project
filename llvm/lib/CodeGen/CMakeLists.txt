@@ -48,6 +48,8 @@ add_llvm_component_library(LLVMCodeGen
   ComplexDeinterleavingPass.cpp
   CriticalAntiDepBreaker.cpp
   DeadMachineInstructionElim.cpp
+  DeltaMainStackMap.cpp
+  DeltaMainStackMapEncoder.cpp
   DetectDeadLanes.cpp
   DFAPacketizer.cpp
   DroppedVariableStatsMIR.cpp

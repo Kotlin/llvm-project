@@ -413,11 +413,11 @@ StackMaps::parseRegisterLiveOutMask(const uint32_t *Mask) const {
 
 // See statepoint MI format description in StatepointOpers' class comment
 // in include/llvm/CodeGen/StackMaps.h
-void StackMaps::parseStatepointOpers(const MachineInstr &MI,
-                                     MachineInstr::const_mop_iterator MOI,
-                                     MachineInstr::const_mop_iterator MOE,
-                                     LocationVec &Locations,
-                                     LiveOutVec &LiveOuts) {
+unsigned StackMaps::parseStatepointOpers(const MachineInstr &MI,
+                                         MachineInstr::const_mop_iterator MOI,
+                                         MachineInstr::const_mop_iterator MOE,
+                                         LocationVec &Locations,
+                                         LiveOutVec &LiveOuts) {
   LLVM_DEBUG(dbgs() << "record statepoint : " << MI << "\n");
   StatepointOpers SO(&MI);
   MOI = parseOperand(MOI, MOE, Locations, LiveOuts); // CC
@@ -475,11 +475,14 @@ void StackMaps::parseStatepointOpers(const MachineInstr &MI,
   assert(MOI->isImm() && MOI->getImm() == StackMaps::ConstantOp);
   ++MOI;
   unsigned NumAllocas = MOI->getImm();
+  const unsigned TotalAllocas = NumAllocas;
   ++MOI;
   while (NumAllocas--) {
     MOI = parseOperand(MOI, MOE, Locations, LiveOuts);
     assert(MOI < MOE);
   }
+
+  return TotalAllocas;
 }
 
 void StackMaps::recordStackMapOpers(const MCSymbol &MILabel,
@@ -499,8 +502,9 @@ void StackMaps::recordStackMapOpers(const MCSymbol &MILabel,
   }
 
   // Parse operands.
+  unsigned NumAllocas = 0;
   if (MI.getOpcode() == TargetOpcode::STATEPOINT)
-    parseStatepointOpers(MI, MOI, MOE, Locations, LiveOuts);
+    NumAllocas = parseStatepointOpers(MI, MOI, MOE, Locations, LiveOuts);
   else
     while (MOI != MOE)
       MOI = parseOperand(MOI, MOE, Locations, LiveOuts);
@@ -512,7 +516,7 @@ void StackMaps::recordStackMapOpers(const MCSymbol &MILabel,
       MCSymbolRefExpr::create(AP.CurrentFnSymForSize, OutContext), OutContext);
 
   CSInfos.emplace_back(CSOffsetExpr, ID, std::move(Locations),
-                       std::move(LiveOuts));
+                       std::move(LiveOuts), NumAllocas);
 
   // Record the stack size of the current function and update callsite count.
   const MachineFrameInfo &MFI = AP.MF->getFrameInfo();
@@ -521,7 +525,7 @@ void StackMaps::recordStackMapOpers(const MCSymbol &MILabel,
       MFI.hasVarSizedObjects() || RegInfo->hasStackRealignment(*(AP.MF));
   uint64_t FrameSize = HasDynamicFrameSize ? UINT64_MAX : MFI.getStackSize();
 
-  auto [CurrentIt, Inserted] = FnInfos.try_emplace(AP.CurrentFnSym, FrameSize);
+  auto [CurrentIt, Inserted] = FnInfos.try_emplace(AP.CurrentFnSym, FrameSize, MFI.getOffsetAdjustment());
   if (!Inserted)
     CurrentIt->second.RecordCount++;
 }

@@ -1740,6 +1740,21 @@ def int_experimental_gc_relocate : DefaultAttrsIntrinsic<
     [llvm_any_ty], [llvm_token_ty, llvm_i32_ty, llvm_i32_ty],
     [IntrNoMem, ImmArg<ArgIndex<1>>, ImmArg<ArgIndex<2>>]>;
 
+// A normal-path gc.statepoint call produces a real `token` value that
+// experimental_gc_relocate's first argument expects. On the exceptional
+// (unwind) path there is no such token - RS4GC would normally reuse the
+// landingpad instruction itself as a stand-in, but a real landingpad (the
+// kind Kotlin/Native's exception handling emits) has a different, fixed
+// type, not `token`, which experimental_gc_relocate rejects. kn_gc_relocate
+// sidesteps the conflict: its first argument is a plain i32 instead of a
+// token, reusing the 32-bit "type selector" field the exception-handling
+// code already extracts from the landingpad for its own purposes (deciding
+// which catch clause matches) as the stand-in token. No new value is
+// invented, and ordinary (non-Kotlin) exception handling is untouched.
+def int_experimental_kn_gc_relocate : DefaultAttrsIntrinsic<
+    [llvm_any_ty], [llvm_i32_ty, llvm_i32_ty, llvm_i32_ty],
+    [IntrNoMem, ImmArg<ArgIndex<1>>, ImmArg<ArgIndex<2>>]>;
+
 def int_experimental_gc_get_pointer_base : DefaultAttrsIntrinsic<
     [llvm_anyptr_ty], [llvm_anyptr_ty],
     [IntrNoMem, ReadNone<ArgIndex<0>>, NoCapture<ArgIndex<0>>]>;
@@ -1890,6 +1905,16 @@ def int_donothing : DefaultAttrsIntrinsic<[], [], [IntrNoMem]>;
 // that they are not removed even if they turn out to be empty, for languages
 // which specify that infinite loops must be preserved.
 def int_sideeffect : DefaultAttrsIntrinsic<[], [], [IntrInaccessibleMemOnly]>;
+
+// Identity intrinsics used by the Kotlin/Native codegen to bridge between
+// address spaces: kn.conceal moves a GC-visible (AS1) pointer into the
+// default address space, kn.publish does the reverse. Both are modeled like
+// int_sideeffect so they are not hoisted, eliminated, or reordered across
+// memory operations.
+def int_kn_conceal : DefaultAttrsIntrinsic<[llvm_ptr_ty], [LLVMQualPointerType<1>],
+    [IntrInaccessibleMemOnly]>;
+def int_kn_publish : DefaultAttrsIntrinsic<[LLVMQualPointerType<1>], [llvm_ptr_ty],
+    [IntrInaccessibleMemOnly]>;
 
 // The pseudoprobe intrinsic works as a place holder to the block it probes.
 // Like the sideeffect intrinsic defined above, this intrinsic is treated by the

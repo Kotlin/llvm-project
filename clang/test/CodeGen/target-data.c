@@ -193,7 +193,13 @@
 
 // RUN: %clang_cc1 -triple arm64-pc-win32-macho -o - -emit-llvm %s | \
 // RUN: FileCheck %s -check-prefix=AARCH64-WIN32-MACHO
-// AARCH64-WIN32-MACHO: target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32"
+// AARCH64-WIN32-MACHO: target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32-ni:1"
+
+// Address space 1 of the 64-bit Mach-O AArch64 targets is non-integral: it holds the pointers that the
+// Kotlin/Native garbage collector tracks.
+// RUN: %clang_cc1 -triple arm64-apple-macosx -o - -emit-llvm %s | \
+// RUN: FileCheck %s -check-prefix=AARCH64-MACHO
+// AARCH64-MACHO: target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32-ni:1"
 
 // RUN: %clang_cc1 -triple thumb-unknown-gnueabi -o - -emit-llvm %s | \
 // RUN: FileCheck %s -check-prefix=THUMB

@@ -295,6 +295,24 @@ static cl::opt<bool> DisableMultiVectorSpillFill(
 
 STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 
+namespace llvm {
+extern cl::opt<bool> KNLazyStackMap;
+} // namespace llvm
+
+static constexpr int StackMapAddrSlotSize = 16;
+
+static bool hasStackMapAddrSlot(const MachineFunction &MF) {
+  const Function &F = MF.getFunction();
+  if (!KNLazyStackMap || !F.hasGC() || F.getGC() != "kotlin-native" ||
+      MF.getSubtarget<AArch64Subtarget>().isTargetWindows())
+    return false;
+  return any_of(MF, [](const MachineBasicBlock &MBB) {
+    return any_of(MBB, [](const MachineInstr &MI) {
+      return MI.getOpcode() == TargetOpcode::STATEPOINT;
+    });
+  });
+}
+
 /// Returns how much of the incoming argument stack area (in bytes) we should
 /// clean up in an epilogue. For the C calling convention this will be 0, for
 /// guaranteed tail call conventions it can be positive (a normal return or a
@@ -334,6 +352,11 @@ static StackOffset getSVEStackSize(const MachineFunction &MF);
 static Register findScratchNonCalleeSaveRegister(MachineBasicBlock *MBB,
                                                  bool HasCall = false);
 static bool requiresSaveVG(const MachineFunction &MF);
+static StackOffset getFPOffset(const MachineFunction &MF,
+                               int64_t ObjectOffset);
+static StackOffset getStackOffset(const MachineFunction &MF,
+                                  int64_t ObjectOffset);
+
 
 // Conservatively, returns true if the function is likely to have an SVE vectors
 // on the stack. This function is safe to be called before callee-saves or
@@ -571,6 +594,10 @@ bool AArch64FrameLowering::hasFPImpl(const MachineFunction &MF) const {
   // DefaultSafeSPDisplacement is fine as we only emergency spill GP regs.
   if (!MFI.isMaxCallFrameSizeComputed() ||
       MFI.getMaxCallFrameSize() > DefaultSafeSPDisplacement)
+    return true;
+
+  if (const Function &MFF = MF.getFunction();
+      MFF.hasGC() && MFF.getGC() == "kotlin-native")
     return true;
 
   return false;
@@ -1168,6 +1195,16 @@ bool AArch64FrameLowering::canUseAsPrologue(
     // available.
     if (!LiveRegs.available(MRI, AArch64::X16) ||
         !LiveRegs.available(MRI, AArch64::X17))
+      return false;
+  }
+
+  if (hasStackMapAddrSlot(*MF)) {
+    // The prologue stores the stack map address through X9. Make sure it is
+    // available.
+    const MachineRegisterInfo &MRI = MF->getRegInfo();
+    LivePhysRegs LiveRegs(*Subtarget.getRegisterInfo());
+    getLiveRegsForEntryMBB(LiveRegs, MBB);
+    if (!LiveRegs.available(MRI, AArch64::X9))
       return false;
   }
 
@@ -1925,7 +1962,7 @@ void AArch64FrameLowering::emitPacRetPlusLeafHardening(
 void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
                                         MachineBasicBlock &MBB) const {
   MachineBasicBlock::iterator MBBI = MBB.begin();
-  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
   const Function &F = MF.getFunction();
   const AArch64Subtarget &Subtarget = MF.getSubtarget<AArch64Subtarget>();
   const AArch64RegisterInfo *RegInfo = Subtarget.getRegisterInfo();
@@ -2277,6 +2314,19 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
     }
     if (EmitAsyncCFI)
       emitDefineCFAWithFP(MF, MBB, MBBI, FixedObject);
+
+    if (hasStackMapAddrSlot(MF)) {
+      // Store the address of the stack map record directly before the frame
+      // record. X9 is a temporary: it is neither an argument nor callee-saved,
+      // and canUseAsPrologue checks that it is free here.
+      BuildMI(MBB, MBBI, DL, TII->get(AArch64::KNStackMapAddr), AArch64::X9)
+          .setMIFlag(MachineInstr::FrameSetup);
+      BuildMI(MBB, MBBI, DL, TII->get(AArch64::STURXi))
+          .addReg(AArch64::X9, RegState::Kill)
+          .addReg(AArch64::FP)
+          .addImm(-StackMapAddrSlotSize)
+          .setMIFlag(MachineInstr::FrameSetup);
+    }
   }
 
   // Now emit the moves for whatever callee saved regs we have (including FP,
@@ -2553,6 +2603,22 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
     }
     emitCalleeSavedGPRLocations(MBB, MBBI);
     emitCalleeSavedSVELocations(MBB, MBBI);
+  }
+
+  if (MF.getFunction().hasGC() && MF.getFunction().getGC() == "kotlin-native") {
+    if (!hasFP(MF))
+      report_fatal_error(
+          ("delta-main: function " + MF.getName() +
+           " has no frame pointer; stack map offsets are FP-relative"));
+
+    if (MFI.hasVarSizedObjects() || RegInfo->hasStackRealignment(MF)) {
+      // Stack map slots are converted from SP to FP with a constant delta,
+      // which is only valid when SP does not move relative to FP.
+      report_fatal_error(("delta-main: function " + MF.getName() +
+                          " has var sized objects or stack realignment"));
+    }
+
+    MFI.setOffsetAdjustment(getFPOffset(MF, 0).getFixed() - getStackOffset(MF, 0).getFixed());
   }
 }
 
@@ -3048,11 +3114,17 @@ bool AArch64FrameLowering::enableFullCFIFixup(const MachineFunction &MF) const {
 StackOffset
 AArch64FrameLowering::getFrameIndexReference(const MachineFunction &MF, int FI,
                                              Register &FrameReg) const {
+  bool PreferFp = MF.getFunction().hasFnAttribute(Attribute::SanitizeHWAddress) ||
+          MF.getFunction().hasFnAttribute(Attribute::SanitizeMemTag);
+  auto& F = MF.getFunction();
+
+  if (F.hasGC()) {
+    PreferFp |= (MF.getFunction().getGC() == "kotlin-native");
+  }
+
   return resolveFrameIndexReference(
       MF, FI, FrameReg,
-      /*PreferFP=*/
-      MF.getFunction().hasFnAttribute(Attribute::SanitizeHWAddress) ||
-          MF.getFunction().hasFnAttribute(Attribute::SanitizeMemTag),
+      PreferFp,
       /*ForSimm=*/false);
 }
 
@@ -3635,6 +3707,11 @@ static void computeCalleeSaveRegisterPairs(
          (IsWindows && RPI.Reg2 == AArch64::LR)))
       ByteOffset += StackFillDir * 8;
 
+    // The stack map address is directly before FP, so allocate an extra
+    // 16 bytes for it.
+    if (NeedsFrameRecord && RPI.Reg2 == AArch64::FP && hasStackMapAddrSlot(MF))
+      ByteOffset += StackFillDir * StackMapAddrSlotSize;
+
     // Round up size of non-pair to pair size if we need to pad the
     // callee-save area to ensure 16-byte alignment.
     if (NeedGapToAlignStack && !NeedsWinCFI && !RPI.isScalable() &&
@@ -3661,6 +3738,10 @@ static void computeCalleeSaveRegisterPairs(
         ((!IsWindows && RPI.Reg2 == AArch64::FP) ||
          (IsWindows && RPI.Reg2 == AArch64::LR)))
       Offset += 8;
+    // The extra bytes above were taken off the end of the area. Move the FP, LR
+    // pair to the top of it, so that the stack map address is directly below FP.
+    if (NeedsFrameRecord && RPI.Reg2 == AArch64::FP && hasStackMapAddrSlot(MF))
+      Offset += StackMapAddrSlotSize;
     RPI.Offset = Offset / Scale;
 
     assert((!RPI.isPaired() ||
@@ -4441,6 +4522,9 @@ void AArch64FrameLowering::determineCalleeSaves(MachineFunction &MF,
   if (hasFP(MF) && AFI->hasSwiftAsyncContext())
     CSStackSize += 8;
 
+  if (hasFP(MF) && hasStackMapAddrSlot(MF))
+    CSStackSize += StackMapAddrSlotSize;
+
   uint64_t AlignedCSStackSize = alignTo(CSStackSize, 16);
   LLVM_DEBUG(dbgs() << "Estimated stack frame size: "
                     << EstimatedStackSize + AlignedCSStackSize << " bytes.\n");
@@ -4552,6 +4636,15 @@ bool AArch64FrameLowering::assignCalleeSavedSpillSlots(
         Reg == AArch64::FP) {
       FrameIdx = MFI.CreateStackObject(8, Alignment, true);
       AFI->setSwiftAsyncContextFrameIdx(FrameIdx);
+      if ((unsigned)FrameIdx < MinCSFrameIndex)
+        MinCSFrameIndex = FrameIdx;
+      if ((unsigned)FrameIdx > MaxCSFrameIndex)
+        MaxCSFrameIndex = FrameIdx;
+    }
+
+    if (hasFP(MF) && hasStackMapAddrSlot(MF) && Reg == AArch64::FP) {
+      FrameIdx = MFI.CreateStackObject(StackMapAddrSlotSize, Align(8), true);
+      AFI->setStackMapAddrFrameIdx(FrameIdx);
       if ((unsigned)FrameIdx < MinCSFrameIndex)
         MinCSFrameIndex = FrameIdx;
       if ((unsigned)FrameIdx > MaxCSFrameIndex)

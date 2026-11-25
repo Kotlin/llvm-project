@@ -207,6 +207,9 @@ class AArch64FunctionInfo final : public MachineFunctionInfo {
   /// The stack slot where the Swift asynchronous context is stored.
   int SwiftAsyncContextFrameIdx = std::numeric_limits<int>::max();
 
+  /// The stack slot where the address of the stack map record is stored.
+  int StackMapAddrFrameIdx = std::numeric_limits<int>::max();
+
   /// Whether this function has a swift coro return that doesn't restore
   /// the stack.
   bool HasPoplessEpilogue = false;
@@ -379,6 +382,13 @@ public:
       if (SwiftAsyncContextFrameIdx != std::numeric_limits<int>::max()) {
         int64_t Offset = MFI.getObjectOffset(getSwiftAsyncContextFrameIdx());
         int64_t ObjSize = MFI.getObjectSize(getSwiftAsyncContextFrameIdx());
+        MinOffset = std::min<int64_t>(Offset, MinOffset);
+        MaxOffset = std::max<int64_t>(Offset + ObjSize, MaxOffset);
+      }
+
+      if (StackMapAddrFrameIdx != std::numeric_limits<int>::max()) {
+        int64_t Offset = MFI.getObjectOffset(StackMapAddrFrameIdx);
+        int64_t ObjSize = MFI.getObjectSize(StackMapAddrFrameIdx);
         MinOffset = std::min<int64_t>(Offset, MinOffset);
         MaxOffset = std::max<int64_t>(Offset + ObjSize, MaxOffset);
       }
@@ -579,6 +589,9 @@ public:
     SwiftAsyncContextFrameIdx = FI;
   }
   int getSwiftAsyncContextFrameIdx() const { return SwiftAsyncContextFrameIdx; }
+
+  void setStackMapAddrFrameIdx(int FI) { StackMapAddrFrameIdx = FI; }
+  int getStackMapAddrFrameIdx() const { return StackMapAddrFrameIdx; }
 
   bool hasPoplessEpilogue() const {
     return HasPoplessEpilogue;

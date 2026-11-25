@@ -80,6 +80,8 @@ protected:
 
   bool NeededSafePoints = false;    ///< if set, calls are inferred to be safepoints
   bool UsesMetadata = false;     ///< If set, backend must emit metadata tables.
+  bool ForceRegisterSpill = false; /// If set, force all regeisters to spill regardless
+                                  /// of calling convention
 
 public:
   LLVM_ABI GCStrategy();
@@ -129,6 +131,11 @@ public:
   bool needsSafePoints() const { return NeededSafePoints; }
 
   ///@}
+
+  /// True if force register spill is needed
+  bool needForceRegisterSpill() const { return ForceRegisterSpill; }
+
+  /// @}
 };
 
 /// Subclasses of GCStrategy are made available for use during compilation by
