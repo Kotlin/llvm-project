@@ -314,7 +314,8 @@ private:
 
   bool hasVirtRegAlloc();
   BlockFrequency calcSpillCost();
-  bool addSplitConstraints(InterferenceCache::Cursor, BlockFrequency &);
+  bool addSplitConstraints(InterferenceCache::Cursor, BlockFrequency &,
+                           BlockFrequency MaxCost);
   bool addThroughConstraints(InterferenceCache::Cursor, ArrayRef<unsigned>);
   bool growRegion(GlobalSplitCandidate &Cand);
   BlockFrequency calcGlobalSplitCost(GlobalSplitCandidate &,
